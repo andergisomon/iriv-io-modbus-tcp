@@ -19,4 +19,5 @@ embassy-futures = "0.1.2"
 embassy-net = "0.7.1"
 embassy-rp = "0.8.0"
 embedded-hal-bus = "0.3.0"
+modbus-core = { version = "0.2.0", default-featues = false, features = ["tcp"]}
 static_cell = "2.1.1"

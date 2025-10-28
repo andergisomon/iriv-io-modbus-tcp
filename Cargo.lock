@@ -652,6 +652,7 @@ dependencies = [
  "embassy-net",
  "embassy-rp",
  "embedded-hal-bus",
+ "modbus-core",
  "static_cell",
 ]
 
@@ -743,6 +744,15 @@ name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
+
+[[package]]
+name = "modbus-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60040f846a5440a37a3f2deb113ab80924ce672428e94b0a419d95c31a84802a"
+dependencies = [
+ "byteorder",
+]
 
 [[package]]
 name = "nb"
