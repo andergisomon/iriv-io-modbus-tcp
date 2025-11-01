@@ -9,10 +9,6 @@ description = "Modbus/TCP firmware for the Cytron IRIV IO."
 readme = "README.md"
 repository = "https://github.com/andergisomon/iriv-io-modbus-tcp"
 
-[[example]]
-name = "example"
-path = "usage_example/example.rs"
-
 [dependencies]
 embassy-executor = "0.9.1"
 embassy-futures = "0.1.2"
