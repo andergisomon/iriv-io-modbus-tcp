@@ -4,12 +4,13 @@
 
 use embassy_rp::adc::{Adc, Async, Channel, Config, InterruptHandler};
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::{Peri, peripherals::*};
+use embassy_rp::{Peri, Peripherals, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
 
+// TODO: Just create channels and put them in the Hal struct for the I/O pins
 pub struct Hal {
     pub led: Output<'static>,
     pub dout: [Output<'static>; 4],
@@ -88,16 +89,23 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 }
 
 // WIP
+// TODO: Just create channels and put them in the Hal struct for the I/O pins
 // TODO: embed units into the type system
-pub fn an_read_voltage_mv(hal: &mut Hal, channel: usize) -> u32 {
+pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
     let mut pin_0 = Channel::new_pin(hal.an0, Pull::None);
     let mut pin_1 = Channel::new_pin(hal.an1, Pull::None);
     let mut buf = [0_u16; 64];
 
     let val = match channel {
-        0 => hal.adc.read_many(&mut pin_0),
-        1 => hal.adc.read_many(&mut pin_1),
-        _ => 0,
+        0 => {
+            hal.adc.read_many(&mut pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
+        },
+        1 => {
+            hal.adc.read_many(&mut pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
+        },
+        _ => 0.0,
     } as f32;
     (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0)) as u32
 }
