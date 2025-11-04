@@ -18,6 +18,7 @@ pub struct Hal {
     pub adc: Adc<'static, Async>,
     pub an0: Peri<'static, PIN_26>,
     pub an1: Peri<'static, PIN_27>,
+    pub w5500_int: Input<'static>,
     pub w5500_spi: Spi<'static, SPI0, spi::Async>,
     pub w5500_cs: Output<'static>,
     pub w5500_rst: Output<'static>,
@@ -68,6 +69,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         p.DMA_CH1,
         cfg
     );
+    let w5500_int = Input::new(p.PIN_18, Pull::Up);
     let w5500_cs = Output::new(p.PIN_5, Level::High);
     let w5500_rst = Output::new(p.PIN_6, Level::High);
 
@@ -83,6 +85,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         an0,
         an1,
         w5500_spi: spi,
+        w5500_int,
         w5500_cs,
         w5500_rst,
     }
