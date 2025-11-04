@@ -16,18 +16,20 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 use modbus_core::*;
+use crate::hal::*;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    // #[test]
+    // fn it_works() {
+    //     let result = add(2, 2);
+    //     assert_eq!(result, 4);
+    // }
 }

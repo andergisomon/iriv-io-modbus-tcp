@@ -10,10 +10,15 @@ readme = "README.md"
 repository = "https://github.com/andergisomon/iriv-io-modbus-tcp"
 
 [dependencies]
-embassy-executor = "0.9.1"
+embassy-executor = { version = "0.9.1", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
 embassy-futures = "0.1.2"
 embassy-net = "0.7.1"
 embassy-rp = "0.8.0"
 embedded-hal-bus = "0.3.0"
 modbus-core = { version = "0.2.0", default-featues = false, features = ["tcp"]}
 static_cell = "2.1.1"
+
+[package.metadata.embassy]
+build = [
+  { target = "thumbv6m-none-eabi" }
+]
