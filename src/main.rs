@@ -1,10 +1,12 @@
 #![no_std]
 #![no_main]
 
+use core::net::Ipv4Addr;
+
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_futures::yield_now;
-use embassy_net::{Stack, StackResources};
+use embassy_net::{Ipv4Cidr, Stack, StackResources};
 use embassy_net_wiznet::chip::W5500;
 use embassy_net_wiznet::*;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
@@ -16,6 +18,7 @@ use embassy_sync::mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embedded_io_async::Write;
 use static_cell::StaticCell;
+use embassy_rp::clocks::RoscRng;
 use modbus_core::*;
 
 pub mod hal;
@@ -60,7 +63,28 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(ethernet_task(runner)).unwrap();
 
+    let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
+        address: Ipv4Cidr::new(embassy_net::Ipv4Address::new(192, 168, 1, 123), 24),
+        gateway: None,
+        dns_servers: Default::default(), // or `heapless::Vec::new()`
+    });
+
+    let mut rng = RoscRng;
+
+    static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
+    let (stack, runner) = embassy_net::new(
+        device,
+        net_config,
+        RESOURCES.init(StackResources::new()),
+        rng.next_u64(),
+    );
+
+    let mut rx_buffer = [0; 4096];
+    let mut tx_buffer = [0; 4096];
+    let mut buf = [0; 4096];
+
     loop {
-        // deal with TCP socket events here
+        let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
+        socket.set_timeout(Some(Duration::from_secs(10)));
     }
 }
