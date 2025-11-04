@@ -16,6 +16,7 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 use modbus_core::*;
+pub mod hal;
 use crate::hal::*;
 
 #[embassy_executor::main]
