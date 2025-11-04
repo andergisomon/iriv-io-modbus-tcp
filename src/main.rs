@@ -44,7 +44,6 @@ async fn net_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> 
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
     let iriv_hal = hal::init(p);
-    let spi = iriv_hal.w5500_spi;
 
     let mac_addr = [0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED];
     static STATE: StaticCell<State<8, 8>> = StaticCell::new();
@@ -59,7 +58,7 @@ async fn main(spawner: Spawner) {
     .await
     .unwrap();
 
-    spawner.spawn(unwrap!(ethernet_task(runner)));
+    spawner.spawn(ethernet_task(runner)).unwrap();
 
     loop {
         // deal with TCP socket events here

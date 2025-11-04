@@ -7,6 +7,10 @@ use embassy_rp::gpio::{Input, Level, Output, Pull};
 use embassy_rp::{Peri, Peripherals, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
+use embassy_sync::mutex::Mutex;
+use static_cell::StaticCell;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
 
@@ -19,8 +23,8 @@ pub struct Hal {
     pub an0: Peri<'static, PIN_26>,
     pub an1: Peri<'static, PIN_27>,
     pub w5500_int: Input<'static>,
-    pub w5500_spi: Spi<'static, SPI0, spi::Async>,
-    pub w5500_cs: Output<'static>,
+    pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
+    // pub w5500_cs: Output<'static>,
     pub w5500_rst: Output<'static>,
 }
 
@@ -69,9 +73,15 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         p.DMA_CH1,
         cfg
     );
+
     let w5500_int = Input::new(p.PIN_18, Pull::Up);
     let w5500_cs = Output::new(p.PIN_5, Level::High);
     let w5500_rst = Output::new(p.PIN_6, Level::High);
+
+    static SPI_BUS: StaticCell<Mutex<NoopRawMutex, Spi<'static, SPI0, spi::Async>>> = StaticCell::new();
+    let spi_bus = SPI_BUS.init(Mutex::new(spi));
+
+    let spi = SpiDevice::new(spi_bus, w5500_cs);
 
     let adc = Adc::new(p.ADC, Irqs, Config::default());
     let an0 = p.PIN_26;
@@ -86,7 +96,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         an1,
         w5500_spi: spi,
         w5500_int,
-        w5500_cs,
+        // w5500_cs,
         w5500_rst,
     }
 }
