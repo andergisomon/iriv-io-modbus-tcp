@@ -39,7 +39,7 @@ async fn ethernet_task(
 }
 
 #[embassy_executor::task]
-async fn net_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> ! {
+async fn ip_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> ! {
     runner.run().await
 }
 
@@ -60,7 +60,6 @@ async fn main(spawner: Spawner) {
     )
     .await
     .unwrap();
-
     spawner.spawn(ethernet_task(runner)).unwrap();
 
     let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
@@ -70,14 +69,15 @@ async fn main(spawner: Spawner) {
     });
 
     let mut rng = RoscRng;
-
     static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
+
     let (stack, runner) = embassy_net::new(
         device,
         net_config,
         RESOURCES.init(StackResources::new()),
         rng.next_u64(),
     );
+    spawner.spawn(ip_task(runner)).unwrap();
 
     let mut rx_buffer = [0; 4096];
     let mut tx_buffer = [0; 4096];
@@ -85,6 +85,27 @@ async fn main(spawner: Spawner) {
 
     loop {
         let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
-        socket.set_timeout(Some(Duration::from_secs(10)));
+        socket.set_timeout(Some(Duration::from_secs(12)));
+
+        if let Err(e) = socket.accept(1234).await {
+            warn!("accept error: {:?}", e);
+            continue;
+        }
+
+        loop {
+            let n = match socket.read(&mut buf).await {
+                Ok(0) => {
+                    warn!("read EOF");
+                    break;
+                }
+                Ok(n) => n,
+                Err(e) => {
+                    warn!("{:?}", e);
+                    break;
+                }
+            };
+            info!("rxd {}", core::str::from_utf8(&buf[..n]).unwrap());
+        }
+
     }
 }
