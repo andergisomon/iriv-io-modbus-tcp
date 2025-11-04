@@ -2,15 +2,10 @@
 /// Ported from the MicroPython impl: https://github.com/CytronTechnologies/Cytron-IRIV-IO-Controller/blob/main/examples/circuitpython/modbus_io_expander/source/lib/iriv_ioc_hal.py
 /// Keeping things simple for now: Pins with counter function not implemented
 
-use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_rp::adc::{Adc, Channel};
 use embassy_rp::gpio::{Input, Level, Output, OutputDrive, Pull};
 use embassy_rp::peripherals::*;
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use embassy_sync::mutex::Mutex;
-use embassy_time::Timer;
-use embassy_executor::Spawner;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
 
@@ -45,7 +40,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         Output::new(p.PIN_3.degrade(), Level::Low),
     ];
 
-    // DI0–DI10
+    // DI0–DI10)
     let din = [
         Input::new(p.PIN_4.degrade(), Pull::None),
         Input::new(p.PIN_7.degrade(), Pull::None),
