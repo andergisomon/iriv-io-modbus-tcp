@@ -2,23 +2,24 @@
 /// Ported from the MicroPython impl: https://github.com/CytronTechnologies/Cytron-IRIV-IO-Controller/blob/main/examples/circuitpython/modbus_io_expander/source/lib/iriv_ioc_hal.py
 /// Keeping things simple for now: Pins with counter function not implemented
 
-use embassy_rp::adc::{Adc, Channel};
-use embassy_rp::gpio::{Input, Level, Output, OutputDrive, Pull};
-use embassy_rp::peripherals::*;
+use embassy_rp::adc::{Adc, Async, Channel, Config, InterruptHandler};
+use embassy_rp::gpio::{Input, Level, Output, Pull};
+use embassy_rp::{Peri, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
+use embassy_rp::bind_interrupts;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
 
 pub struct Hal {
-    pub led: Output<'static, PIN_25>,
-    pub dout: [Output<'static, AnyPin>; 4],
-    pub din: [Input<'static, AnyPin>; 11],
-    pub adc: Adc,
-    pub an0: PIN_26,
-    pub an1: PIN_27,
-    pub w5500_spi: Spi<'static, SPI0, spi::Blocking>,
-    pub w5500_cs: Output<'static, PIN_5>,
-    pub w5500_rst: Output<'static, PIN_6>,
+    pub led: Output<'static>,
+    pub dout: [Output<'static>; 4],
+    pub din: [Input<'static>; 11],
+    pub adc: Adc<'static, Async>,
+    pub an0: Peri<'static, PIN_26>,
+    pub an1: Peri<'static, PIN_27>,
+    pub w5500_spi: Spi<'static, SPI0, spi::Async>,
+    pub w5500_cs: Output<'static>,
+    pub w5500_rst: Output<'static>,
 }
 
 bind_interrupts!(
@@ -34,28 +35,28 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 
     // DO0–DO3
     let dout = [
-        Output::new(p.PIN_0.degrade(), Level::Low),
-        Output::new(p.PIN_1.degrade(), Level::Low),
-        Output::new(p.PIN_2.degrade(), Level::Low),
-        Output::new(p.PIN_3.degrade(), Level::Low),
+        Output::new(p.PIN_0, Level::Low),
+        Output::new(p.PIN_1, Level::Low),
+        Output::new(p.PIN_2, Level::Low),
+        Output::new(p.PIN_3, Level::Low),
     ];
 
     // DI0–DI10)
     let din = [
-        Input::new(p.PIN_4.degrade(), Pull::None),
-        Input::new(p.PIN_7.degrade(), Pull::None),
-        Input::new(p.PIN_8.degrade(), Pull::None),
-        Input::new(p.PIN_9.degrade(), Pull::None),
-        Input::new(p.PIN_10.degrade(), Pull::None),
-        Input::new(p.PIN_11.degrade(), Pull::None),
-        Input::new(p.PIN_12.degrade(), Pull::None),
-        Input::new(p.PIN_13.degrade(), Pull::None),
-        Input::new(p.PIN_14.degrade(), Pull::None),
-        Input::new(p.PIN_15.degrade(), Pull::None),
-        Input::new(p.PIN_16.degrade(), Pull::None),
+        Input::new(p.PIN_4, Pull::None),
+        Input::new(p.PIN_7, Pull::None),
+        Input::new(p.PIN_8, Pull::None),
+        Input::new(p.PIN_9, Pull::None),
+        Input::new(p.PIN_10, Pull::None),
+        Input::new(p.PIN_11, Pull::None),
+        Input::new(p.PIN_12, Pull::None),
+        Input::new(p.PIN_13, Pull::None),
+        Input::new(p.PIN_14, Pull::None),
+        Input::new(p.PIN_15, Pull::None),
+        Input::new(p.PIN_16, Pull::None),
     ];
 
-    let cfg = SpiConfig::default();
+    let mut cfg = SpiConfig::default();
     cfg.frequency = 40_000_000; // w5500 supports up to 50MHz, and the RP2350 can technically do more, but let's just play it safe
     let spi = Spi::new(
         p.SPI0,
@@ -86,22 +87,27 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     }
 }
 
+// WIP
 // TODO: embed units into the type system
 pub fn an_read_voltage_mv(hal: &mut Hal, channel: usize) -> u32 {
+    let mut pin_0 = Channel::new_pin(hal.an0, Pull::None);
+    let mut pin_1 = Channel::new_pin(hal.an1, Pull::None);
+    let mut buf = [0_u16; 64];
+
     let val = match channel {
-        0 => hal.adc.read(&mut hal.an0),
-        1 => hal.adc.read(&mut hal.an1),
+        0 => hal.adc.read_many(&mut pin_0),
+        1 => hal.adc.read_many(&mut pin_1),
         _ => 0,
     } as f32;
     (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0)) as u32
 }
 
 // TODO: embed units into the type system
-pub fn an_read_current_ua(hal: &mut Hal, channel: usize) -> u32 {
-    let val = match channel {
-        0 => hal.adc.read(&mut hal.an0),
-        1 => hal.adc.read(&mut hal.an1),
-        _ => 0,
-    } as f32;
-    (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
-}
+// pub fn an_read_current_ua(hal: &mut Hal, channel: usize) -> u32 {
+//     let val = match channel {
+//         0 => hal.adc.read_many(&mut hal.an0),
+//         1 => hal.adc.read_many(&mut hal.an1),
+//         _ => 0,
+//     } as f32;
+//     (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
+// }

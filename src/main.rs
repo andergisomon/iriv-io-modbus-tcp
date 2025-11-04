@@ -17,20 +17,13 @@ use embedded_io_async::Write;
 use static_cell::StaticCell;
 use modbus_core::*;
 pub mod hal;
-use crate::hal::*;
+pub use crate::hal::*;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    let p = embassy_rp::init(Default::default());
+    let iriv_hal = hal::init(p);
+    let spi = iriv_hal.w5500_spi;
 
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // #[test]
-    // fn it_works() {
-    //     let result = add(2, 2);
-    //     assert_eq!(result, 4);
-    // }
 }
