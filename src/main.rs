@@ -19,10 +19,11 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
-use modbus_core::*;
 
 pub mod hal;
 pub use crate::hal::*;
+pub mod modbus;
+pub use crate::modbus::*;
 
 // NoopRawMutex, because embassy expects a rawmutex anyway. doesn't do anything, just to satisfy trait bound
 #[embassy_executor::task]
@@ -79,9 +80,9 @@ async fn main(spawner: Spawner) {
     );
     spawner.spawn(ip_task(runner)).unwrap();
 
-    let mut rx_buffer = [0; 4096];
-    let mut tx_buffer = [0; 4096];
-    let mut buf = [0; 4096];
+    let mut rx_buffer = [0; 32];
+    let mut tx_buffer = [0; 32];
+    let mut buf = [0; 1024];
 
     loop {
         let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
@@ -91,21 +92,6 @@ async fn main(spawner: Spawner) {
             warn!("accept error: {:?}", e);
             continue;
         }
-
-        loop {
-            let n = match socket.read(&mut buf).await {
-                Ok(0) => {
-                    warn!("read EOF");
-                    break;
-                }
-                Ok(n) => n,
-                Err(e) => {
-                    warn!("{:?}", e);
-                    break;
-                }
-            };
-            info!("rxd {}", core::str::from_utf8(&buf[..n]).unwrap());
-        }
-
+        transact(&mut buf, socket).await;
     }
 }
