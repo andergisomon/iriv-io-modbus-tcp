@@ -1,9 +1,18 @@
+use defmt::*;
 use embassy_net::tcp::TcpSocket;
-use modbus_core::tcp::ResponseAdu;
+use modbus_core::tcp::{RequestAdu, ResponseAdu};
 use modbus_core::tcp::server::{self, decode_request, encode_response};
 use modbus_core::{Data, FunctionCode, Request, RequestPdu, Response};
 
-pub async fn transact<'r>(buf: &mut [u8], socket: TcpSocket<'static>, req: RequestPdu<'r>) -> Result<Response<'r>> {
+#[derive(PartialEq, Eq, Debug, Format, Clone)]
+pub enum Error {
+    Modbus,
+    Transport,
+    Timeout,
+}
+
+pub async fn transact_client_reads<'r>(buf: &mut [u8], socket: TcpSocket<'static>, req: RequestPdu<'r>)
+    -> Result<Response<'r>> {
 
     let mut total_read = 0;
 
@@ -19,36 +28,21 @@ pub async fn transact<'r>(buf: &mut [u8], socket: TcpSocket<'static>, req: Reque
                 break;
             }
         };
-        info!("rxd {}", core::str::from_utf8(&buf[..n]).unwrap());
+        info!("received {}", core::str::from_utf8(&buf[..n]).unwrap());
     }
 
+    let req = modbus_core::tcp::server::decode_request(buf)
+        .map_err(|_| Error::Transport)?
+        .ok_or(Error::Modbus)?;
 
-    if total_read == 0 {
-        // Timeout if nothing has been received
-        Err(Error::Timeout)
-    } else {
-        let data = &self.buffer[..total_read];
-        debug!("Received: ({}) {:x}", total_read, data);
+    let RequestAdu {hdr: header, pdu: req_data} = req; // handle what kind of modbus request it is
 
-        // Try to parse the response
-        let response = modbus_core::rtu::client::decode_response(data)
-            .map_err(|_| Error::Transport)?
-            .ok_or(Error::Modbus)?;
+    let resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
 
-        Ok(response.pdu.0.map_err(|_| Error::Modbus)?)
-    }
-
-
-
-    let resp = ResponseAdu {
-        hdr: Header {
-
-        }
-    }
-
-    let n = encode_response(adu, buf)
+    let n = encode_response(resp, resp_tcp_buf) // form a TCP buffer from the response
 }
 
-pub async fn get_client_req_pdu() {
+pub async fn transact_client_writes<'r>(buf: &mut [u8], socket: TcpSocket<'static>, req: RequestPdu<'r>)
+    -> Result<Response<'r>> {
 
 }

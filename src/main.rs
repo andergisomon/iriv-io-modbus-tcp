@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-use core::net::Ipv4Addr;
-
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_futures::yield_now;
@@ -66,7 +64,7 @@ async fn main(spawner: Spawner) {
     let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
         address: Ipv4Cidr::new(embassy_net::Ipv4Address::new(192, 168, 1, 123), 24),
         gateway: None,
-        dns_servers: Default::default(), // or `heapless::Vec::new()`
+        dns_servers: Default::default()
     });
 
     let mut rng = RoscRng;
@@ -92,6 +90,6 @@ async fn main(spawner: Spawner) {
             warn!("accept error: {:?}", e);
             continue;
         }
-        transact(&mut buf, socket).await;
+        transact_client_reads(&mut buf, socket).await;
     }
 }
