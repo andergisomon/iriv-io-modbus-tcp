@@ -20,8 +20,8 @@ pub struct Hal {
     pub dout: [Output<'static>; 4],
     pub din: [Input<'static>; 11],
     pub adc: Adc<'static, Async>,
-    pub an0: Peri<'static, PIN_26>,
-    pub an1: Peri<'static, PIN_27>,
+    pub an0: Channel<'static>,
+    pub an1: Channel<'static>,
     pub w5500_int: Input<'static>,
     pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
     // pub w5500_cs: Output<'static>,
@@ -38,6 +38,10 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     // MicroPython should map this to GPIO25, but the IRIV IOC datasheet reserves that to the RS-485 LED
     // Cytron leaves GPIO29 free for the user-defined USR LED
     let led = Output::new(p.PIN_29, Level::Low);
+
+    // AN0-AN1
+    let an0 = Channel::new_pin(p.PIN_26, Pull::None);
+    let an1 = Channel::new_pin(p.PIN_27, Pull::None);
 
     // DO0–DO3
     let dout = [
@@ -80,12 +84,9 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 
     static SPI_BUS: StaticCell<Mutex<NoopRawMutex, Spi<'static, SPI0, spi::Async>>> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(spi));
-
     let spi = SpiDevice::new(spi_bus, w5500_cs);
 
     let adc = Adc::new(p.ADC, Irqs, Config::default());
-    let an0 = p.PIN_26;
-    let an1 = p.PIN_27;
 
     Hal {
         led,
@@ -105,17 +106,19 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 // TODO: embed units into the type system
 pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
-    let mut pin_0 = Channel::new_pin(hal.an0, Pull::None);
-    let mut pin_1 = Channel::new_pin(hal.an1, Pull::None);
+    let mut pin_0 = &mut hal.an0;
+    let mut pin_1 = &mut hal.an1;
     let mut buf = [0_u16; 64];
 
     let val = match channel {
         0 => {
-            hal.adc.read_many(&mut pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            // 100kS/s sample rate
+            hal.adc.read_many(pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         1 => {
-            hal.adc.read_many(&mut pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            // 100kS/s sample rate
+            hal.adc.read_many(pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         _ => 0.0,
