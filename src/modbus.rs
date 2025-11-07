@@ -37,8 +37,11 @@ pub async fn transact_client_reads<'r>(buf: &mut [u8], socket: TcpSocket<'static
 
     let RequestAdu {hdr: header, pdu: req_data} = req; // handle what kind of modbus request it is
 
-    let resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
+    // copy MBAP header, put data to service request
+    // resp_data need to be populated by a helper function that relays data from the DI/O and AI
+    let resp = ResponseAdu {hdr: header, pdu: resp_data};
 
+    // resp_tcp_buf is the TCP datagram
     let n = encode_response(resp, resp_tcp_buf) // form a TCP buffer from the response
 }
 
