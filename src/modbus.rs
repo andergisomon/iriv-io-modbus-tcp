@@ -13,6 +13,7 @@ pub enum Error {
 
 /// Services client reads and writes
 /// TCP socket timeout is set in main()
+/// modbus-core has yet to implement modbus exception responses
 pub async fn transact_client<'r>(buf: &mut [u8], socket: TcpSocket<'static>) -> Result<Response<'r>> {
 
     loop {
@@ -45,4 +46,6 @@ pub async fn transact_client<'r>(buf: &mut [u8], socket: TcpSocket<'static>) -> 
 
     // resp_tcp_buf is the TCP datagram
     let n = encode_response(resp, resp_tcp_buf) // form a TCP buffer from the response
+
+    // once all is done, call write on the socket and flush
 }

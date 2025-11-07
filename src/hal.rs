@@ -120,7 +120,7 @@ pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -
         },
         _ => 0.0,
     } as f32;
-    (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0)) as u32
+    (val * (SUPPLY_VOLTAGE_MV as f32 / 65535.0 * 16.0 / 5.0)) as u32
 }
 
 // TODO: embed units into the type system
@@ -130,5 +130,5 @@ pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -
 //         1 => hal.adc.read_many(&mut hal.an1),
 //         _ => 0,
 //     } as f32;
-//     (val * (SUPPLY_VOLTAGE_MV as f32 / 4095.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
+//     (val * (SUPPLY_VOLTAGE_MV as f32 / 65535.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
 // }
