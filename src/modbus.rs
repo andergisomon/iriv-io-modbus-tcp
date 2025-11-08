@@ -3,8 +3,50 @@ use embassy_net::tcp::TcpSocket;
 use embassy_rp::gpio::{Level};
 use modbus_core::tcp::{RequestAdu, ResponseAdu};
 use modbus_core::tcp::server::{decode_request, encode_response};
-use modbus_core::Error;
+use modbus_core::{Error, Request};
 use crate::Io;
+
+/// Register addresses
+/// Coils (0x0) - Read/Write
+const DO0_ADDR: u16 = 0x0100; /// Digital Output 0
+const DO1_ADDR: u16 = 0x0101; /// Digital Output 1
+const DO2_ADDR: u16 = 0x0102; /// Digital Output 2
+const DO3_ADDR: u16 = 0x0103; /// Digital Output 3
+
+/// Contacts (0x1) - Read-only
+const DI0_ADDR:  u16 = 0x0000; /// Digital Input 0
+const DI1_ADDR:  u16 = 0x0001; /// Digital Input 1
+const DI2_ADDR:  u16 = 0x0002; /// Digital Input 2
+const DI3_ADDR:  u16 = 0x0003; /// Digital Input 3
+const DI4_ADDR:  u16 = 0x0004; /// Digital Input 4
+const DI5_ADDR:  u16 = 0x0005; /// Digital Input 5
+const DI6_ADDR:  u16 = 0x0006; /// Digital Input 6
+const DI7_ADDR:  u16 = 0x0007; /// Digital Input 7
+const DI8_ADDR:  u16 = 0x0008; /// Digital Input 8
+const DI9_ADDR:  u16 = 0x0009; /// Digital Input 9
+const DI10_ADDR: u16 = 0x000a; /// Digital Input 10
+
+/// Input Registers (3x) - Read-only
+const ANV0_ADDR: u16 = 0x0200; /// Analog Input 0 (V)
+const ANV1_ADDR: u16 = 0x0201; /// Analog Input 1 (V)
+const ANA0_ADDR: u16 = 0x0210; /// Analog Input 0 (mA)
+const ANA1_ADDR: u16 = 0x0211; /// Analog Input 1 (mA)
+
+const MODEL1_ADDR: u16 = 0x0f00; /// Model Name 1 (Read-only)
+const MODEL2_ADDR: u16 = 0x0f01; /// Model Name 2 (Read-only)
+
+const VERSION_MAJOR_ADDR: u16 = 0x0f10; /// Major Version (Read-only)
+const VERSION_MINOR_ADDR: u16 = 0x0f11; /// Minor Version (Read-only)
+const VERSION_PATCH_ADDR: u16 = 0x0f12; /// Patch Version (Read-only)
+
+/// Model name
+const MODEL1_VAL: u16 = 0x494f;
+const MODEL2_VAL: u16 = 0x4300;
+
+/// Firmware Version, should be synced with Cargo semver (major.minor.patch)
+const VERSION_MAJOR_VAL: u16 = 0;
+const VERSION_MINOR_VAL: u16 = 1;
+const VERSION_PATCH_VAL: u16 = 0;
 
 /// Services client reads and writes
 /// TCP socket timeout is set in main()
@@ -31,6 +73,9 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>
     // handle what kind of modbus request it is
     // just use match statements here to handle client read/writes
     let RequestAdu {hdr: header, pdu: req_data} = req;
+    match req_data {
+        Request::ReadCoils(addr, quantity),
+    }
 
     // copy MBAP header, put data to service request
     // resp_data need to be populated by a helper function that relays data from the DI/O and AI
