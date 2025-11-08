@@ -109,17 +109,39 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
-
             let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
             resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         // Read Digital Inputs
         RequestPdu(Request::ReadDiscreteInputs(addr, quantity)) => {
+            let bools = &mut [false; MAX_NUMBER_OF_CONTACTS];
+            for i in 0..quantity as usize {
+                bools[i] = din_get_cb(i, &hal);
+            }
 
-            // handle request here
+            let start_addr: Result<usize, CallbackError> = match addr {
+                DI0_ADDR => Ok(0),
+                DI1_ADDR => Ok(1),
+                DI2_ADDR => Ok(2),
+                DI3_ADDR => Ok(3),
+                DI4_ADDR => Ok(4),
+                DI5_ADDR => Ok(5),
+                DI6_ADDR => Ok(6),
+                DI7_ADDR => Ok(7),
+                DI8_ADDR => Ok(8),
+                DI9_ADDR => Ok(9),
+                DI10_ADDR => Ok(10),
+                _ => {
+                    error!("Modbus address given does not match any register definition");
+                    Err(CallbackError::NoAddressMatch)
+                }
+            };
 
-            resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr)));
+            let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
+            let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
+            // modbus-core should've really distinguished between coils and contacts
+            resp_data = ResponsePdu(Ok(Response::ReadDiscreteInputs(coils)));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         // Read Analog Inputs
@@ -156,11 +178,25 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         },
         // Write to One Specific Digital Output
         RequestPdu(Request::WriteSingleCoil(addr, val)) => {
+            let start_addr: Result<usize, CallbackError> = match addr {
+                DO0_ADDR => Ok(0),
+                DO1_ADDR => Ok(1),
+                DO2_ADDR => Ok(2),
+                DO3_ADDR => Ok(3),
+                _ => {
+                    error!("Modbus address given does not match any register definition");
+                    Err(CallbackError::NoAddressMatch)
+                }
+            };
 
-            // handle request here
-
-            resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr)));
-            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+            match start_addr {
+                Ok(addr) => {
+                    dout_set_cb(addr, hal, val);
+                    resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr as u16)));
+                    resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+                },
+                _ => ()
+            }
         },
         _ => {
             error!("Client sent unimplemented Modbus request");
