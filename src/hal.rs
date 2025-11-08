@@ -4,7 +4,7 @@
 
 use embassy_rp::adc::{Adc, Async, Channel, Config, InterruptHandler};
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::{Peri, Peripherals, peripherals::*};
+use embassy_rp::{Peripherals, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
@@ -114,8 +114,8 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 // TODO: embed units into the type system
 pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
-    let mut pin_0 = &mut hal.io.an0;
-    let mut pin_1 = &mut hal.io.an1;
+    let pin_0 = &mut hal.io.an0;
+    let pin_1 = &mut hal.io.an1;
     let mut buf = [0_u16; 64];
 
     let val = match channel {
