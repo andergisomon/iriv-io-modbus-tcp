@@ -90,6 +90,6 @@ async fn main(spawner: Spawner) {
             warn!("accept error: {:?}", e);
             continue;
         }
-        transact_client(&mut buf, &mut iriv_hal.io, socket).await;
+        transact_client(&mut buf, &mut iriv_hal.io, &mut socket).await;
     }
 }

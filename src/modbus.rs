@@ -8,7 +8,10 @@ use crate::Io;
 
 #[derive(Debug)]
 pub enum CallbackError {
-    NoAddressMatch
+    /// Error when client specifies an undefined register address.
+    NoAddressMatch,
+    /// Error when client sends a Modbus request that is not yet implemented.
+    NoSupportedRequestMatch,
 }
 
 /// Register addresses
@@ -57,10 +60,10 @@ const VERSION_PATCH_VAL: u16 = 0;
 /// Services client reads and writes
 /// TCP socket timeout is set in main()
 /// modbus-core has yet to implement modbus exception responses
-pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>) -> Result<(), Error> {
+pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocket<'_>) -> Result<(), Error> {
 
     loop {
-        let n = match socket.read(&mut buf).await {
+        let n = match socket.read(buf).await {
             Ok(0) => {
                 warn!("read EOF");
                 break;
@@ -81,7 +84,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>
     let RequestAdu {hdr: header, pdu: req_data} = req;
 
     let mut resp_data;
-    let mut resp;
+    let mut resp: Result<ResponseAdu<'_>, CallbackError>;
     let target_buf = &mut [0u8; MAX_NUMBER_OF_COILS];
 
     match req_data {
@@ -106,31 +109,40 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>
 
             let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
             resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
-            resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
+            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         RequestPdu(Request::ReadInputRegisters(addr, quantity)) => {
 
             // handle requests here
 
             resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(Data::from_words(&[0], target_buf).unwrap())));
-            resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
+            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         RequestPdu(Request::WriteSingleCoil(addr, val)) => {
 
             // handle requests here
 
             resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr)));
-            resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
+            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
-        _ => ()
+        _ => {
+            error!("Client sent unimplemented Modbus request");
+            resp = Err(CallbackError::NoSupportedRequestMatch)
+        }
     };
 
     // resp_tcp_buf is the TCP datagram
     let resp_tcp_buf = &mut [0u8; 4096];
-    let n = encode_response(resp, resp_tcp_buf); // form a TCP buffer from the response
+    match resp {
+        Ok(resp) => {
+            _ = encode_response(resp, resp_tcp_buf); // form a TCP buffer from the response
+            // once all is done, here call write on the socket and flush
+            socket.write(resp_tcp_buf).await.unwrap();
+        }
+        _ => error!("Client sent unimplemented Modbus request")
+    }
 
-    // once all is done, call write on the socket and flush
-
+    socket.flush().await;
     Ok(())
 }
 
