@@ -4,12 +4,12 @@ use embassy_rp::gpio::{Input, Level};
 use modbus_core::tcp::{RequestAdu, ResponseAdu};
 use modbus_core::tcp::server::{self, decode_request, encode_response};
 use modbus_core::{Error, Data, FunctionCode, Request, RequestPdu, Response};
-use crate::Hal;
+use crate::{Hal, Io};
 
 /// Services client reads and writes
 /// TCP socket timeout is set in main()
 /// modbus-core has yet to implement modbus exception responses
-pub async fn transact_client<'r>(buf: &mut [u8], hal: &mut Hal, socket: TcpSocket<'static>) -> Result<(), Error> {
+pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>) -> Result<(), Error> {
 
     loop {
         let n = match socket.read(&mut buf).await {
@@ -45,7 +45,7 @@ pub async fn transact_client<'r>(buf: &mut [u8], hal: &mut Hal, socket: TcpSocke
     Ok(())
 }
 
-pub fn din_get_cb(pin: usize, hal: &mut Hal) -> u8 {
+pub fn din_get_cb(pin: usize, hal: &mut Io) -> u8 {
     let di_hdl = &mut hal.din;
     let res = match di_hdl[pin].get_level() {
         Level::Low => 0,
@@ -54,7 +54,7 @@ pub fn din_get_cb(pin: usize, hal: &mut Hal) -> u8 {
     res
 }
 
-pub fn dout_set_cb(pin: usize, hal: &mut Hal, val: bool) {
+pub fn dout_set_cb(pin: usize, hal: &mut Io, val: bool) {
     let dout_hdl = &mut hal.dout;
     let val = match val {
         false => Level::Low,

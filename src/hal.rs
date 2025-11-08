@@ -14,14 +14,18 @@ use static_cell::StaticCell;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
 
+pub struct Io {
+    pub dout: [Output<'static>; 4],
+    pub din: [Input<'static>; 11],
+    pub an0: Channel<'static>,
+    pub an1: Channel<'static>,
+}
+
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 pub struct Hal {
     pub led: Output<'static>,
-    pub dout: [Output<'static>; 4],
-    pub din: [Input<'static>; 11],
     pub adc: Adc<'static, Async>,
-    pub an0: Channel<'static>,
-    pub an1: Channel<'static>,
+    pub io: Io,
     pub w5500_int: Input<'static>,
     pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
     // pub w5500_cs: Output<'static>,
@@ -88,13 +92,17 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 
     let adc = Adc::new(p.ADC, Irqs, Config::default());
 
-    Hal {
-        led,
+    let io = Io {
         dout,
         din,
-        adc,
         an0,
         an1,
+    };
+
+    Hal {
+        led,
+        adc,
+        io,
         w5500_spi: spi,
         w5500_int,
         // w5500_cs,
@@ -106,8 +114,8 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 // TODO: embed units into the type system
 pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
-    let mut pin_0 = &mut hal.an0;
-    let mut pin_1 = &mut hal.an1;
+    let mut pin_0 = &mut hal.io.an0;
+    let mut pin_1 = &mut hal.io.an1;
     let mut buf = [0_u16; 64];
 
     let val = match channel {
