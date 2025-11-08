@@ -6,6 +6,11 @@ use modbus_core::tcp::server::{decode_request, encode_response};
 use modbus_core::{Coils, Data, Error, Request, RequestPdu, Response, ResponsePdu};
 use crate::Io;
 
+#[derive(Debug)]
+pub enum CallbackError {
+    NoAddressMatch
+}
+
 /// Register addresses
 /// Coils (0x0) - Read/Write
 const DO0_ADDR: u16 = 0x0100; /// Digital Output 0
@@ -83,17 +88,23 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: TcpSocket<'_>
         RequestPdu(Request::ReadCoils(addr, quantity)) => {
             let bools = &mut [false; MAX_NUMBER_OF_COILS];
             for i in 0..quantity as usize {
-                bools[i] = din_get_cb(i, &hal);
+                bools[i] = dout_get_cb(i, &hal);
             }
 
-            match addr {
-                DO0_ADDR => ,
-                DO1_ADDR => ,
-                DO2_ADDR => ,
-                DO3_ADDR => ,
-            }
+            let start_addr: Result<usize, CallbackError> = match addr {
+                DO0_ADDR => Ok(0),
+                DO1_ADDR => Ok(1),
+                DO2_ADDR => Ok(2),
+                DO3_ADDR => Ok(3),
+                _ => {
+                    error!("Modbus address given does not match any register definition");
+                    Err(CallbackError::NoAddressMatch)
+                }
+            };
 
-            let coils = Coils::from_bools(bools, target_buf).unwrap();
+            let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
+
+            let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
             resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
             resp = ResponseAdu {hdr: header, pdu: resp_data}; // copy MBAP header, put data to service request
         },
@@ -139,4 +150,13 @@ pub fn dout_set_cb(pin: usize, hal: &mut Io, val: bool) {
         true => Level::High
     };
     dout_hdl[pin].set_level(val);
+}
+
+pub fn dout_get_cb(pin: usize, hal: &Io) -> bool {
+    let di_hdl = &hal.dout;
+    let res = match di_hdl[pin].get_output_level() {
+        Level::Low => false,
+        Level::High => true,
+    };
+    res
 }
