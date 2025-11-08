@@ -4,10 +4,10 @@
 
 use embassy_rp::adc::{Adc, Async, Channel, Config, InterruptHandler};
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::{Peri, Peripherals, peripherals::*};
+use embassy_rp::{Peri, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
-use embassy_sync::blocking_mutex::raw::{NoopRawMutex, RawMutex};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;

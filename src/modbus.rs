@@ -85,7 +85,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
     // just use match statements here to handle client read/writes
     let RequestAdu {hdr: header, pdu: req_data} = req;
 
-    let mut resp_data;
+    let resp_data;
     let mut resp: Result<ResponseAdu<'_>, CallbackError> = Err(CallbackError::NoSupportedRequestMatch);
     let target_buf = &mut [0u8; MAX_NUMBER_OF_COILS];
 

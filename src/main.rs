@@ -3,18 +3,15 @@
 
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_futures::yield_now;
-use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
+use embassy_net::{Ipv4Address, Ipv4Cidr, StackResources};
 use embassy_net_wiznet::chip::W5500;
 use embassy_net_wiznet::*;
-use embassy_rp::gpio::{Input, Level, Output, Pull};
+use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{Async, Spi};
-use embassy_time::{Delay, Duration};
+use embassy_time::Duration;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
-use embassy_sync::mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use embedded_io_async::Write;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
 use heapless::Vec;
@@ -62,7 +59,7 @@ async fn main(spawner: Spawner) {
     .unwrap();
     spawner.spawn(ethernet_task(runner)).unwrap();
 
-    let mut dns: heapless::Vec<Ipv4Address, 3> = heapless::Vec::new();
+    let mut dns: heapless::Vec<Ipv4Address, 3> = Vec::new();
     dns.push(Ipv4Address::new(8, 8, 8, 8)).unwrap();
 
     let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
