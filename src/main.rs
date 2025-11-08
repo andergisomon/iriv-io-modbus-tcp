@@ -4,7 +4,7 @@
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_futures::yield_now;
-use embassy_net::{Ipv4Cidr, Stack, StackResources};
+use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
 use embassy_net_wiznet::chip::W5500;
 use embassy_net_wiznet::*;
 use embassy_rp::gpio::{Input, Level, Output, Pull};
@@ -17,6 +17,7 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
+use heapless::Vec;
 
 pub mod hal;
 pub use crate::hal::*;
@@ -61,10 +62,13 @@ async fn main(spawner: Spawner) {
     .unwrap();
     spawner.spawn(ethernet_task(runner)).unwrap();
 
+    let mut dns: heapless::Vec<Ipv4Address, 3> = heapless::Vec::new();
+    dns.push(Ipv4Address::new(8, 8, 8, 8)).unwrap();
+
     let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
-        address: Ipv4Cidr::new(embassy_net::Ipv4Address::new(192, 168, 1, 123), 24),
-        gateway: None,
-        dns_servers: Default::default()
+        address: Ipv4Cidr::new(Ipv4Address::new(192, 168, 1, 123), 24),
+        gateway: Some(Ipv4Address::new(0, 0, 0, 0)),
+        dns_servers: dns
     });
 
     let mut rng = RoscRng;
