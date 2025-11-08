@@ -117,25 +117,27 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         // Read Digital Inputs
         RequestPdu(Request::ReadDiscreteInputs(addr, quantity)) => {
 
+            // handle request here
+
+            resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr)));
+            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         // Read Analog Inputs
         RequestPdu(Request::ReadInputRegisters(addr, quantity)) => {
-
             let words = &mut [0u16; MAX_NUMBER_OF_INPUT_REGISTERS];
 
+            // Modbus Request for Analog Current Input
             if (addr == ANA0_ADDR) || (addr == ANA1_ADDR) {
                 for i in 0..quantity as usize {
                     words[i] = an_read_current_ua(hal, i).await as u16;
                 }
             }
-
-            if (addr == ANV0_ADDR || addr == ANV1_ADDR) {
+            // Modbus Request for Analog Voltage Input
+            if (addr == ANV0_ADDR) || (addr == ANV1_ADDR) {
                 for i in 0..quantity as usize {
                     words[i] = an_read_voltage_mv(hal, i).await as u16;
                 }
             }
-
-
 
             let start_addr: Result<usize, CallbackError> = match addr {
                 ANA0_ADDR => Ok(0),
@@ -148,13 +150,14 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
                 }
             };
 
-            resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(Data::from_words(&[0], target_buf).unwrap())));
+            let truncated_words = &mut words[start_addr.unwrap_or_else(|_| -> usize {0})..];
+            resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(Data::from_words(truncated_words, target_buf).unwrap())));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
         // Write to One Specific Digital Output
         RequestPdu(Request::WriteSingleCoil(addr, val)) => {
 
-            // handle requests here
+            // handle request here
 
             resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr)));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
