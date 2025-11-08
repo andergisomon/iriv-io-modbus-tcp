@@ -4,7 +4,7 @@ use embassy_rp::gpio::{Level};
 use modbus_core::tcp::{RequestAdu, ResponseAdu};
 use modbus_core::tcp::server::{decode_request, encode_response};
 use modbus_core::{Coils, Data, Error, Request, RequestPdu, Response, ResponsePdu};
-use crate::Io;
+use crate::{Io, an_read_current_ua, an_read_voltage_mv};
 
 #[derive(Debug)]
 pub enum CallbackError {
@@ -34,12 +34,14 @@ const DI7_ADDR:  u16 = 0x0007; /// Digital Input 7
 const DI8_ADDR:  u16 = 0x0008; /// Digital Input 8
 const DI9_ADDR:  u16 = 0x0009; /// Digital Input 9
 const DI10_ADDR: u16 = 0x000a; /// Digital Input 10
+const MAX_NUMBER_OF_CONTACTS: usize = 11;
 
 /// Input Registers (3x) - Read-only
 const ANV0_ADDR: u16 = 0x0200; /// Analog Input 0 (V)
 const ANV1_ADDR: u16 = 0x0201; /// Analog Input 1 (V)
 const ANA0_ADDR: u16 = 0x0210; /// Analog Input 0 (mA)
 const ANA1_ADDR: u16 = 0x0211; /// Analog Input 1 (mA)
+const MAX_NUMBER_OF_INPUT_REGISTERS: usize = 4;
 
 const MODEL1_ADDR: u16 = 0x0f00; /// Model Name 1 (Read-only)
 const MODEL2_ADDR: u16 = 0x0f01; /// Model Name 2 (Read-only)
@@ -84,10 +86,11 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
     let RequestAdu {hdr: header, pdu: req_data} = req;
 
     let mut resp_data;
-    let mut resp: Result<ResponseAdu<'_>, CallbackError>;
+    let mut resp: Result<ResponseAdu<'_>, CallbackError> = Err(CallbackError::NoSupportedRequestMatch);
     let target_buf = &mut [0u8; MAX_NUMBER_OF_COILS];
 
     match req_data {
+        // Read Digital Outputs
         RequestPdu(Request::ReadCoils(addr, quantity)) => {
             let bools = &mut [false; MAX_NUMBER_OF_COILS];
             for i in 0..quantity as usize {
@@ -111,13 +114,44 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
+        // Read Digital Inputs
+        RequestPdu(Request::ReadDiscreteInputs(addr, quantity)) => {
+
+        },
+        // Read Analog Inputs
         RequestPdu(Request::ReadInputRegisters(addr, quantity)) => {
 
-            // handle requests here
+            let words = &mut [0u16; MAX_NUMBER_OF_INPUT_REGISTERS];
+
+            if (addr == ANA0_ADDR) || (addr == ANA1_ADDR) {
+                for i in 0..quantity as usize {
+                    words[i] = an_read_current_ua(hal, i).await as u16;
+                }
+            }
+
+            if (addr == ANV0_ADDR || addr == ANV1_ADDR) {
+                for i in 0..quantity as usize {
+                    words[i] = an_read_voltage_mv(hal, i).await as u16;
+                }
+            }
+
+
+
+            let start_addr: Result<usize, CallbackError> = match addr {
+                ANA0_ADDR => Ok(0),
+                ANA1_ADDR => Ok(1),
+                ANV0_ADDR => Ok(0),
+                ANV1_ADDR => Ok(1),
+                _ => {
+                    error!("Modbus address given does not match any register definition");
+                    Err(CallbackError::NoAddressMatch)
+                }
+            };
 
             resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(Data::from_words(&[0], target_buf).unwrap())));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
+        // Write to One Specific Digital Output
         RequestPdu(Request::WriteSingleCoil(addr, val)) => {
 
             // handle requests here

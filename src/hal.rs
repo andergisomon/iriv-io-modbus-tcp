@@ -4,10 +4,10 @@
 
 use embassy_rp::adc::{Adc, Async, Channel, Config, InterruptHandler};
 use embassy_rp::gpio::{Input, Level, Output, Pull};
-use embassy_rp::{Peripherals, peripherals::*};
+use embassy_rp::{Peri, Peripherals, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::{NoopRawMutex, RawMutex};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;
@@ -19,12 +19,13 @@ pub struct Io {
     pub din: [Input<'static>; 11],
     pub an0: Channel<'static>,
     pub an1: Channel<'static>,
+    pub adc_dma_channel: Peri<'static, DMA_CH2>,
+    pub adc: Adc<'static, Async>,
 }
 
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 pub struct Hal {
     pub led: Output<'static>,
-    pub adc: Adc<'static, Async>,
     pub io: Io,
     pub w5500_int: Input<'static>,
     pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
@@ -91,17 +92,20 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     let spi = SpiDevice::new(spi_bus, w5500_cs);
 
     let adc = Adc::new(p.ADC, Irqs, Config::default());
+    // let adc_dma_channel = Mutex::new( p.DMA_CH2)
+    let adc_dma_channel: Peri<'static, DMA_CH2> = p.DMA_CH2;
 
     let io = Io {
         dout,
         din,
         an0,
         an1,
+        adc_dma_channel,
+        adc
     };
 
     Hal {
         led,
-        adc,
         io,
         w5500_spi: spi,
         w5500_int,
@@ -111,20 +115,21 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 }
 
 // TODO: embed units into the type system
-pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
-    let pin_0 = &mut hal.io.an0;
-    let pin_1 = &mut hal.io.an1;
+pub async fn an_read_voltage_mv(hal: &mut Io, channel: usize) -> u32 {
+    let pin_0 = &mut hal.an0;
+    let pin_1 = &mut hal.an1;
     let mut buf = [0_u16; 64];
+    let adc_dma = hal.adc_dma_channel.reborrow();
 
     let val = match channel {
         0 => {
             // 100kS/s sample rate
-            hal.adc.read_many(pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            hal.adc.read_many(pin_0, &mut buf, 479, adc_dma).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         1 => {
             // 100kS/s sample rate
-            hal.adc.read_many(pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            hal.adc.read_many(pin_1, &mut buf, 479, adc_dma).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         _ => 0.0,
@@ -133,20 +138,21 @@ pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -
 }
 
 // TODO: embed units into the type system
-pub async fn an_read_current_ua(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
-    let pin_0 = &mut hal.io.an0;
-    let pin_1 = &mut hal.io.an1;
+pub async fn an_read_current_ua(hal: &mut Io, channel: usize) -> u32 {
+    let pin_0 = &mut hal.an0;
+    let pin_1 = &mut hal.an1;
     let mut buf = [0_u16; 64];
+    let adc_dma = hal.adc_dma_channel.reborrow();
 
     let val = match channel {
         0 => {
             // 100kS/s sample rate
-            hal.adc.read_many(pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            hal.adc.read_many(pin_0, &mut buf, 479, adc_dma).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         1 => {
             // 100kS/s sample rate
-            hal.adc.read_many(pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            hal.adc.read_many(pin_1, &mut buf, 479, adc_dma).await.unwrap();
             buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
         },
         _ => 0.0,
