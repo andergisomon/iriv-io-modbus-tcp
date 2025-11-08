@@ -110,8 +110,6 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     }
 }
 
-// WIP
-// TODO: Just create channels and put them in the Hal struct for the I/O pins
 // TODO: embed units into the type system
 pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
     let pin_0 = &mut hal.io.an0;
@@ -135,11 +133,23 @@ pub async fn an_read_voltage_mv(p: Peripherals, hal: &mut Hal, channel: usize) -
 }
 
 // TODO: embed units into the type system
-// pub fn an_read_current_ua(hal: &mut Hal, channel: usize) -> u32 {
-//     let val = match channel {
-//         0 => hal.adc.read_many(&mut hal.an0),
-//         1 => hal.adc.read_many(&mut hal.an1),
-//         _ => 0,
-//     } as f32;
-//     (val * (SUPPLY_VOLTAGE_MV as f32 / 65535.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
-// }
+pub async fn an_read_current_ua(p: Peripherals, hal: &mut Hal, channel: usize) -> u32 {
+    let pin_0 = &mut hal.io.an0;
+    let pin_1 = &mut hal.io.an1;
+    let mut buf = [0_u16; 64];
+
+    let val = match channel {
+        0 => {
+            // 100kS/s sample rate
+            hal.adc.read_many(pin_0, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
+        },
+        1 => {
+            // 100kS/s sample rate
+            hal.adc.read_many(pin_1, &mut buf, 479, p.DMA_CH2).await.unwrap();
+            buf.iter().map(|&x| x as f32).sum::<f32>() / buf.len() as f32
+        },
+        _ => 0.0,
+    } as f32;
+    (val * (SUPPLY_VOLTAGE_MV as f32 / 65535.0 * 16.0 / 5.0 / 248.0 * 1000.0)) as u32
+}
