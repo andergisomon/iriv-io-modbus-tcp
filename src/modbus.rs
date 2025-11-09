@@ -91,7 +91,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
 
     let resp_data;
     let mut resp: Result<ResponseAdu<'_>, CallbackError> = Err(CallbackError::NoSupportedRequestMatch);
-    let target_buf = &mut [0u8; MAX_NUMBER_OF_COILS];
+    let mut target_buf = [0u8; 128]; // Make sure this is big enough when specific requests are serviced.
 
     match req_data {
         // Read Digital Outputs
@@ -113,7 +113,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
-            let coils = Coils::from_bools(truncated_bools, target_buf);
+            let coils = Coils::from_bools(truncated_bools, &mut target_buf);
             match coils {
                     Ok(coils) => {resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
                     resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
@@ -148,7 +148,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
 
             let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
             // modbus-core should've really distinguished between coils and contacts
-            let coils = Coils::from_bools(truncated_bools, target_buf);
+            let coils = Coils::from_bools(truncated_bools, &mut target_buf);
             match coils {
                     Ok(coils) => {resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
                     resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
@@ -204,7 +204,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_words = &mut words[start_addr.unwrap_or_else(|_| -> usize {0})..];
-            let data = Data::from_words(truncated_words, target_buf);
+            let data = Data::from_words(truncated_words, &mut target_buf);
             match data {
                 Ok(data) => {
                     resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(data)));
