@@ -91,7 +91,11 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
 
     let resp_data;
     let mut resp: Result<ResponseAdu<'_>, CallbackError> = Err(CallbackError::NoSupportedRequestMatch);
+<<<<<<< HEAD
     let mut target_buf = [0u8; 64]; // Make sure this is big enough when specific requests are serviced.
+=======
+    let mut target_buf = [0u8; 128]; // Make sure this is big enough when specific requests are serviced.
+>>>>>>> 114d3d263fc6260eba7c7796efb334bd716db84a
 
     match req_data {
         // Read Digital Outputs
