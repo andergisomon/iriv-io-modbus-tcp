@@ -96,7 +96,6 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     let spi = SpiDevice::new(spi_bus, w5500_cs);
 
     let adc = Adc::new(p.ADC, Irqs, Config::default());
-    // let adc_dma_channel = Mutex::new( p.DMA_CH2)
     let adc_dma_channel: Peri<'static, DMA_CH2> = p.DMA_CH2;
 
     let io = Io {

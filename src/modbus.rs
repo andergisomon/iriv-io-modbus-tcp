@@ -144,7 +144,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             resp_data = ResponsePdu(Ok(Response::ReadDiscreteInputs(coils)));
             resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
         },
-        // Read Analog Inputs
+        // Read Analog Inputs, Hardware and Firmware Info
         RequestPdu(Request::ReadInputRegisters(addr, quantity)) => {
             let words = &mut [0u16; MAX_NUMBER_OF_INPUT_REGISTERS];
 
@@ -161,11 +161,31 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
                 }
             }
 
+            // Modbus Request for Miscellaneous Info
+            let read_misc
+                =  (addr == MODEL1_ADDR)
+                || (addr == MODEL2_ADDR)
+                || (addr == VERSION_MAJOR_ADDR)
+                || (addr == VERSION_MINOR_ADDR)
+                || (addr == VERSION_PATCH_ADDR);
+            let misc_info = [MODEL1_VAL, MODEL2_VAL, VERSION_MAJOR_VAL, VERSION_MINOR_VAL, VERSION_PATCH_VAL];
+
+            if read_misc {
+                for i in 0..quantity as usize {
+                    words[i] = misc_info[i];
+                }
+            }
+
             let start_addr: Result<usize, CallbackError> = match addr {
                 ANA0_ADDR => Ok(0),
                 ANA1_ADDR => Ok(1),
                 ANV0_ADDR => Ok(0),
                 ANV1_ADDR => Ok(1),
+                MODEL1_ADDR         => Ok(0),
+                MODEL2_ADDR         => Ok(1),
+                VERSION_MAJOR_ADDR  => Ok(2),
+                VERSION_MINOR_ADDR  => Ok(3),
+                VERSION_PATCH_ADDR  => Ok(4),
                 _ => {
                     error!("Modbus address given does not match any register definition");
                     Err(CallbackError::NoAddressMatch)
