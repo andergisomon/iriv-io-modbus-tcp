@@ -5,7 +5,7 @@ use panic_probe as _;
 use defmt_rtt as _;
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_net::{Ipv4Address, Ipv4Cidr, StackResources};
+use embassy_net::{Ipv4Address, Ipv4Cidr, StackResources, Stack};
 use embassy_net_wiznet::chip::W5500;
 use embassy_net_wiznet::*;
 use embassy_rp::gpio::{Input, Output};
@@ -40,6 +40,25 @@ async fn ethernet_task(
 #[embassy_executor::task]
 async fn ip_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> ! {
     runner.run().await
+}
+
+#[embassy_executor::task]
+async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
+    let mut rx_buffer = [0; 32];
+    let mut tx_buffer = [0; 32];
+    let mut buf = [0; 1024];
+
+    loop {
+        let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
+        socket.set_timeout(Some(Duration::from_secs(12)));
+
+        if let Err(e) = socket.accept(1234).await {
+            warn!("accept error: {:?}", e);
+            continue;
+        }
+        _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
+    }
+
 }
 
 /// Currently being cannibalized by the other tasks
@@ -90,22 +109,21 @@ async fn main(spawner: Spawner) {
         rng.next_u64(),
     );
     spawner.spawn(ip_task(runner)).unwrap();
-
-
+    spawner.spawn(modbus_task(iriv_hal.io, stack)).unwrap();
     spawner.spawn(heartbeat(iriv_hal.led)).unwrap();
 
-    let mut rx_buffer = [0; 32];
-    let mut tx_buffer = [0; 32];
-    let mut buf = [0; 1024];
+    // let mut rx_buffer = [0; 32];
+    // let mut tx_buffer = [0; 32];
+    // let mut buf = [0; 1024];
 
-    loop {
-        let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
-        socket.set_timeout(Some(Duration::from_secs(12)));
+    // loop {
+    //     let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
+    //     socket.set_timeout(Some(Duration::from_secs(12)));
 
-        if let Err(e) = socket.accept(1234).await {
-            warn!("accept error: {:?}", e);
-            continue;
-        }
-        _ = transact_client(&mut buf, &mut iriv_hal.io, &mut socket).await;
-    }
+    //     if let Err(e) = socket.accept(1234).await {
+    //         warn!("accept error: {:?}", e);
+    //         continue;
+    //     }
+    //     _ = transact_client(&mut buf, &mut iriv_hal.io, &mut socket).await;
+    // }
 }
