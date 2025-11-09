@@ -215,7 +215,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         _ => error!("Client sent unimplemented Modbus request")
     }
 
-    socket.flush().await;
+    _ = socket.flush().await;
     Ok(())
 }
 

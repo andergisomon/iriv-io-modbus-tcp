@@ -23,9 +23,13 @@ pub struct Io {
     pub adc: Adc<'static, Async>,
 }
 
+pub struct UsrLed {
+    pub led: Output<'static>,
+}
+
 // TODO: Just create channels and put them in the Hal struct for the I/O pins
 pub struct Hal {
-    pub led: Output<'static>,
+    pub led: UsrLed,
     pub io: Io,
     pub w5500_int: Input<'static>,
     pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
@@ -42,7 +46,7 @@ bind_interrupts!(
 pub fn init(p: embassy_rp::Peripherals) -> Hal {
     // MicroPython should map this to GPIO25, but the IRIV IOC datasheet reserves that to the RS-485 LED
     // Cytron leaves GPIO29 free for the user-defined USR LED
-    let led = Output::new(p.PIN_29, Level::Low);
+    let led = UsrLed { led: Output::new(p.PIN_29, Level::High) };
 
     // AN0-AN1
     let an0 = Channel::new_pin(p.PIN_26, Pull::None);

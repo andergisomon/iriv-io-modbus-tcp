@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use panic_probe as _;
+use defmt_rtt as _;
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_net::{Ipv4Address, Ipv4Cidr, StackResources};
@@ -9,7 +11,7 @@ use embassy_net_wiznet::*;
 use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{Async, Spi};
-use embassy_time::Duration;
+use embassy_time::{Duration, Ticker};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use static_cell::StaticCell;
@@ -38,6 +40,16 @@ async fn ethernet_task(
 #[embassy_executor::task]
 async fn ip_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> ! {
     runner.run().await
+}
+
+/// Currently being cannibalized by the other tasks
+#[embassy_executor::task]
+async fn heartbeat(mut led: UsrLed) -> ! {
+    let mut ticker = Ticker::every(Duration::from_secs(1));
+    loop {
+        _ = led.led.toggle();
+        ticker.next().await;
+    }
 }
 
 #[embassy_executor::main]
@@ -79,6 +91,9 @@ async fn main(spawner: Spawner) {
     );
     spawner.spawn(ip_task(runner)).unwrap();
 
+
+    spawner.spawn(heartbeat(iriv_hal.led)).unwrap();
+
     let mut rx_buffer = [0; 32];
     let mut tx_buffer = [0; 32];
     let mut buf = [0; 1024];
@@ -91,6 +106,6 @@ async fn main(spawner: Spawner) {
             warn!("accept error: {:?}", e);
             continue;
         }
-        transact_client(&mut buf, &mut iriv_hal.io, &mut socket).await;
+        _ = transact_client(&mut buf, &mut iriv_hal.io, &mut socket).await;
     }
 }
