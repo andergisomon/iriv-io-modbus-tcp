@@ -45,9 +45,9 @@ async fn ip_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> !
 
 #[embassy_executor::task]
 async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
-    let mut rx_buffer = [0; 32];
-    let mut tx_buffer = [0; 32];
-    let mut buf = [0; 1024];
+    let mut rx_buffer = [0; 64];
+    let mut tx_buffer = [0; 64];
+    let mut buf = [0; 64];
 
     loop {
         let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
@@ -62,7 +62,6 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
     }
 }
 
-/// Currently being cannibalized by the other tasks
 #[embassy_executor::task]
 async fn heartbeat(mut led: UsrLed) -> ! {
     let mut ticker = Ticker::every(Duration::from_secs(1));
@@ -95,7 +94,7 @@ async fn main(spawner: Spawner) {
     dns.push(Ipv4Address::new(8, 8, 8, 8)).unwrap();
 
     let net_config = embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
-        address: Ipv4Cidr::new(Ipv4Address::new(192, 168, 1, 123), 24),
+        address: Ipv4Cidr::new(Ipv4Address::new(172, 30, 40, 36), 24),
         gateway: Some(Ipv4Address::new(0, 0, 0, 0)),
         dns_servers: dns
     });

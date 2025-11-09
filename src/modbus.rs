@@ -41,7 +41,7 @@ const ANV0_ADDR: u16 = 0x0200; /// Analog Input 0 (V)
 const ANV1_ADDR: u16 = 0x0201; /// Analog Input 1 (V)
 const ANA0_ADDR: u16 = 0x0210; /// Analog Input 0 (mA)
 const ANA1_ADDR: u16 = 0x0211; /// Analog Input 1 (mA)
-const MAX_NUMBER_OF_INPUT_REGISTERS: usize = 4;
+const MAX_NUMBER_OF_INPUT_REGISTERS: usize = 5;
 
 const MODEL1_ADDR: u16 = 0x0f00; /// Model Name 1 (Read-only)
 const MODEL2_ADDR: u16 = 0x0f01; /// Model Name 2 (Read-only)
@@ -203,8 +203,8 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             match start_addr {
-                Ok(addr) => {
-                    dout_set_cb(addr, hal, val);
+                Ok(pin) => {
+                    dout_set_cb(pin, hal, val);
                     resp_data = ResponsePdu(Ok(Response::WriteSingleCoil(addr as u16)));
                     resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
                 },
@@ -218,7 +218,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
     };
 
     // resp_tcp_buf is the TCP datagram
-    let resp_tcp_buf = &mut [0u8; 4096];
+    let resp_tcp_buf = &mut [0u8; 64];
     match resp {
         Ok(resp) => {
             _ = encode_response(resp, resp_tcp_buf); // form a TCP buffer from the response
@@ -229,7 +229,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
     }
 
     // This blocks until Client sends an ACK
-    // _ = socket.flush().await;
+    _ = socket.flush().await;
     Ok(())
 }
 

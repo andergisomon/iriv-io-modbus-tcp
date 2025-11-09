@@ -27,7 +27,6 @@ pub struct UsrLed {
     pub led: Output<'static>,
 }
 
-// TODO: Just create channels and put them in the Hal struct for the I/O pins
 pub struct Hal {
     pub led: UsrLed,
     pub io: Io,
@@ -54,25 +53,25 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 
     // DO0–DO3
     let dout = [
-        Output::new(p.PIN_0, Level::Low),
-        Output::new(p.PIN_1, Level::Low),
-        Output::new(p.PIN_2, Level::Low),
-        Output::new(p.PIN_3, Level::Low),
+        Output::new(p.PIN_12, Level::Low),
+        Output::new(p.PIN_13, Level::Low),
+        Output::new(p.PIN_14, Level::Low),
+        Output::new(p.PIN_15, Level::Low),
     ];
 
     // DI0–DI10)
     let din = [
+        Input::new(p.PIN_0, Pull::None),
+        Input::new(p.PIN_1, Pull::None),
+        Input::new(p.PIN_2, Pull::None),
+        Input::new(p.PIN_3, Pull::None),
         Input::new(p.PIN_4, Pull::None),
+        Input::new(p.PIN_5, Pull::None),
+        Input::new(p.PIN_6, Pull::None),
         Input::new(p.PIN_7, Pull::None),
         Input::new(p.PIN_8, Pull::None),
         Input::new(p.PIN_9, Pull::None),
         Input::new(p.PIN_10, Pull::None),
-        Input::new(p.PIN_11, Pull::None),
-        Input::new(p.PIN_12, Pull::None),
-        Input::new(p.PIN_13, Pull::None),
-        Input::new(p.PIN_14, Pull::None),
-        Input::new(p.PIN_15, Pull::None),
-        Input::new(p.PIN_16, Pull::None),
     ];
 
     let mut cfg = SpiConfig::default();
