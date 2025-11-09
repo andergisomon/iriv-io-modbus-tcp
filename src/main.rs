@@ -51,7 +51,7 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
 
     loop {
         let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
-        socket.set_timeout(Some(Duration::from_secs(12)));
+        // socket.set_timeout(Some(Duration::from_secs(12)));
 
         if let Err(e) = socket.accept(502).await {
             warn!("accept error: {:?}", e);
@@ -63,8 +63,9 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
         // this blocks until client sends an ACK
         _ = socket.flush().await;
         socket.close();
+        Timer::after(Duration::from_millis(35)).await;
         socket.abort();
-        Timer::after(Duration::from_millis(10)).await;
+        Timer::after(Duration::from_millis(35)).await;
     }
 }
 

@@ -113,9 +113,13 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
-            let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
-            resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
-            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+            let coils = Coils::from_bools(truncated_bools, target_buf);
+            match coils {
+                    Ok(coils) => {resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
+                    resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+               } ,
+                Err(_) => return Ok(())
+            }
         },
         // Read Digital Inputs
         RequestPdu(Request::ReadDiscreteInputs(addr, quantity)) => {
@@ -143,10 +147,14 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_bools = &mut bools[start_addr.unwrap_or_else(|_| -> usize {0})..];
-            let coils = Coils::from_bools(truncated_bools, target_buf).unwrap();
             // modbus-core should've really distinguished between coils and contacts
-            resp_data = ResponsePdu(Ok(Response::ReadDiscreteInputs(coils)));
-            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+            let coils = Coils::from_bools(truncated_bools, target_buf);
+            match coils {
+                    Ok(coils) => {resp_data = ResponsePdu(Ok(Response::ReadCoils(coils)));
+                    resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+               } ,
+                Err(_) => return Ok(())
+            }
         },
         // Read Analog Inputs, Hardware and Firmware Info
         RequestPdu(Request::ReadInputRegisters(addr, quantity)) => {
@@ -196,8 +204,14 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             };
 
             let truncated_words = &mut words[start_addr.unwrap_or_else(|_| -> usize {0})..];
-            resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(Data::from_words(truncated_words, target_buf).unwrap())));
-            resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+            let data = Data::from_words(truncated_words, target_buf);
+            match data {
+                Ok(data) => {
+                    resp_data = ResponsePdu(Ok(Response::ReadInputRegisters(data)));
+                    resp = Ok(ResponseAdu {hdr: header, pdu: resp_data}); // copy MBAP header, put data to service request
+                },
+                Err(_) => return Ok(())
+            }
         },
         // Write to One Specific Digital Output
         RequestPdu(Request::WriteSingleCoil(addr, val)) => {
