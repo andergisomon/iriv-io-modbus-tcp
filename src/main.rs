@@ -70,7 +70,7 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
 
 #[embassy_executor::task]
 async fn heartbeat(mut led: UsrLed) -> ! {
-    let mut ticker = Ticker::every(Duration::from_secs(1));
+    let mut ticker = Ticker::every(Duration::from_millis(300));
     loop {
         _ = led.led.toggle();
         ticker.next().await;

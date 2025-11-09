@@ -1,7 +1,7 @@
 use defmt::*;
 use embassy_net::tcp::TcpSocket;
 use embassy_rp::gpio::{Level};
-use modbus_core::tcp::{RequestAdu, ResponseAdu};
+use modbus_core::tcp::{Header, RequestAdu, ResponseAdu};
 use modbus_core::tcp::server::{decode_request, encode_response};
 use modbus_core::{Coils, Data, Error, Request, RequestPdu, Response, ResponsePdu};
 use crate::{Io, an_read_current_ua, an_read_voltage_mv};
@@ -76,7 +76,17 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         }
     };
 
-    let req = decode_request(buf)?.unwrap();
+    let req = match decode_request(buf) {
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            warn!("Incomplete Modbus request");
+            return Ok(());
+        }
+        Err(e) => {
+            warn!("Failed to decode request: {:?}", e);
+            return Ok(());
+        }
+    };
     let RequestAdu {hdr: header, pdu: req_data} = req;
 
     let resp_data;
