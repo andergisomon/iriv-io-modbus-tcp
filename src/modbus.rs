@@ -91,7 +91,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
 
     let resp_data;
     let mut resp: Result<ResponseAdu<'_>, CallbackError> = Err(CallbackError::NoSupportedRequestMatch);
-    let target_buf = &mut [0u8; MAX_NUMBER_OF_COILS];
+    let target_buf = &mut [0u8; 16]; // Need to make sure this is big enough to service the largest possible request count
 
     match req_data {
         // Read Digital Outputs

@@ -16,7 +16,6 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
-use embassy_futures::yield_now;
 use heapless::Vec;
 
 pub mod hal;
@@ -55,16 +54,14 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
 
         if let Err(e) = socket.accept(502).await {
             warn!("accept error: {:?}", e);
-            // yield_now().await;
-            continue;
+            socket.abort();
         }
-        _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
-
-        // this blocks until client sends an ACK
-        _ = socket.flush().await;
-        socket.close();
-        Timer::after(Duration::from_millis(35)).await;
-        socket.abort();
+        else {
+            _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
+            // this blocks until client sends an ACK
+            // _ = socket.flush().await;
+            socket.close();
+        }
         Timer::after(Duration::from_millis(35)).await;
     }
 }
@@ -86,6 +83,7 @@ async fn main(spawner: Spawner) {
     let mac_addr = [0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED];
     static STATE: StaticCell<State<8, 8>> = StaticCell::new();
     let state = STATE.init(State::<8, 8>::new());
+
     let (device, runner) = embassy_net_wiznet::new(
         mac_addr,
         state,
