@@ -11,7 +11,7 @@ use embassy_net_wiznet::*;
 use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{Async, Spi};
-use embassy_time::{Duration, Ticker};
+use embassy_time::{Duration, Ticker, Timer};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use static_cell::StaticCell;
@@ -59,6 +59,12 @@ async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
             continue;
         }
         _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
+
+        // this blocks until client sends an ACK
+        _ = socket.flush().await;
+        socket.close();
+        socket.abort();
+        Timer::after(Duration::from_millis(10)).await;
     }
 }
 
@@ -100,7 +106,7 @@ async fn main(spawner: Spawner) {
     });
 
     let mut rng = RoscRng;
-    static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
+    static RESOURCES: StaticCell<StackResources<8>> = StaticCell::new();
 
     let (stack, runner) = embassy_net::new(
         device,

@@ -223,13 +223,11 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         Ok(resp) => {
             _ = encode_response(resp, resp_tcp_buf); // form a TCP buffer from the response
             // once all is done, here call write on the socket and flush
-            socket.write(resp_tcp_buf).await.unwrap();
+            _ = socket.write(resp_tcp_buf).await.map_err(|_| -> () {});
         }
         _ => error!("Client sent unimplemented Modbus request")
     }
 
-    // This blocks until Client sends an ACK
-    _ = socket.flush().await;
     Ok(())
 }
 
