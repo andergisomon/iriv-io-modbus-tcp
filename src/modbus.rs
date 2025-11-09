@@ -63,26 +63,20 @@ const VERSION_PATCH_VAL: u16 = 0;
 /// TCP socket timeout is set in main()
 /// modbus-core has yet to implement modbus exception responses
 pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocket<'_>) -> Result<(), Error> {
-
-    loop {
-        let n = match socket.read(buf).await {
-            Ok(0) => {
-                warn!("read EOF");
-                break;
-            }
-            Ok(n) => n,
-            Err(e) => {
-                warn!("{:?}", e);
-                break;
-            }
-        };
-        info!("received {:?}", &buf[..n]);
-    }
+    // read one modbus request
+    let n = match socket.read(buf).await {
+        Ok(0) => {
+            warn!("read EOF");
+            return Ok(());
+        }
+        Ok(n) => n,
+        Err(e) => {
+            warn!("read error: {:?}", e);
+            return Ok(());
+        }
+    };
 
     let req = decode_request(buf)?.unwrap();
-
-    // handle what kind of modbus request it is
-    // just use match statements here to handle client read/writes
     let RequestAdu {hdr: header, pdu: req_data} = req;
 
     let resp_data;
@@ -160,7 +154,6 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
                     words[i] = an_read_voltage_mv(hal, i).await as u16;
                 }
             }
-
             // Modbus Request for Miscellaneous Info
             let read_misc
                 =  (addr == MODEL1_ADDR)
@@ -235,7 +228,8 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
         _ => error!("Client sent unimplemented Modbus request")
     }
 
-    _ = socket.flush().await;
+    // This blocks until Client sends an ACK
+    // _ = socket.flush().await;
     Ok(())
 }
 

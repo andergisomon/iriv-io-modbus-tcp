@@ -88,8 +88,8 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     );
 
     let w5500_int = Input::new(p.PIN_18, Pull::Up);
-    let w5500_cs = Output::new(p.PIN_5, Level::High);
-    let w5500_rst = Output::new(p.PIN_6, Level::High);
+    let w5500_cs = Output::new(p.PIN_21, Level::High);
+    let w5500_rst = Output::new(p.PIN_23, Level::High);
 
     static SPI_BUS: StaticCell<Mutex<NoopRawMutex, Spi<'static, SPI0, spi::Async>>> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(spi));
