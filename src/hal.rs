@@ -120,7 +120,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
 pub async fn an_read_voltage_mv(hal: &mut Io, channel: usize) -> u32 {
     let pin_0 = &mut hal.an0;
     let pin_1 = &mut hal.an1;
-    let mut buf = [0_u16; 64];
+    let mut buf = [0_u16; 16];
     let adc_dma = hal.adc_dma_channel.reborrow();
 
     let val = match channel {
@@ -143,7 +143,7 @@ pub async fn an_read_voltage_mv(hal: &mut Io, channel: usize) -> u32 {
 pub async fn an_read_current_ua(hal: &mut Io, channel: usize) -> u32 {
     let pin_0 = &mut hal.an0;
     let pin_1 = &mut hal.an1;
-    let mut buf = [0_u16; 64];
+    let mut buf = [0_u16; 16];
     let adc_dma = hal.adc_dma_channel.reborrow();
 
     let val = match channel {

@@ -16,7 +16,6 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
-use embassy_futures::yield_now;
 use heapless::Vec;
 
 pub mod hal;
@@ -45,27 +44,27 @@ async fn ip_task(mut runner: embassy_net::Runner<'static, Device<'static>>) -> !
 
 #[embassy_executor::task]
 async fn modbus_task(mut iriv_hal: Io, stack: Stack<'static>) -> ! {
-    let mut rx_buffer = [0; 64];
-    let mut tx_buffer = [0; 64];
-    let mut buf = [0; 64];
+    let mut rx_buffer = [0; 128];
+    let mut tx_buffer = [0; 128];
+    let mut buf = [0; 128];
 
     loop {
         let mut socket = embassy_net::tcp::TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
-        // socket.set_timeout(Some(Duration::from_secs(12)));
 
         if let Err(e) = socket.accept(502).await {
             warn!("accept error: {:?}", e);
-            // yield_now().await;
             continue;
         }
-        _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
+        else {
+            _ = transact_client(&mut buf, &mut iriv_hal, &mut socket).await;
 
-        // this blocks until client sends an ACK
-        _ = socket.flush().await;
-        socket.close();
-        Timer::after(Duration::from_millis(35)).await;
-        socket.abort();
-        Timer::after(Duration::from_millis(35)).await;
+            // this blocks until client sends an ACK
+            _ = socket.flush().await;
+            socket.close();
+            Timer::after(Duration::from_millis(15)).await;
+            socket.abort();
+            Timer::after(Duration::from_millis(15)).await;
+        }
     }
 }
 
@@ -107,7 +106,7 @@ async fn main(spawner: Spawner) {
     });
 
     let mut rng = RoscRng;
-    static RESOURCES: StaticCell<StackResources<8>> = StaticCell::new();
+    static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
 
     let (stack, runner) = embassy_net::new(
         device,
