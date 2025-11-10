@@ -182,7 +182,7 @@ pub async fn transact_client(buf: &mut [u8], hal: &mut Io, socket: &mut TcpSocke
             let misc_info = [MODEL1_VAL, MODEL2_VAL, VERSION_MAJOR_VAL, VERSION_MINOR_VAL, VERSION_PATCH_VAL];
 
             if read_misc {
-                for i in 0..quantity as usize {
+                for i in 0..5 as usize {
                     words[i] = misc_info[i];
                 }
             }
