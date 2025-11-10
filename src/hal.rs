@@ -7,7 +7,7 @@ use embassy_rp::gpio::{Input, Level, Output, Pull};
 use embassy_rp::{Peri, peripherals::*};
 use embassy_rp::spi::{self, Spi, Config as SpiConfig};
 use embassy_rp::bind_interrupts;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;
@@ -31,7 +31,7 @@ pub struct Hal {
     pub led: UsrLed,
     pub io: Io,
     pub w5500_int: Input<'static>,
-    pub w5500_spi: SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
+    pub w5500_spi: SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
     // pub w5500_cs: Output<'static>,
     pub w5500_rst: Output<'static>,
 }
@@ -75,7 +75,9 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     ];
 
     let mut cfg = SpiConfig::default();
-    cfg.frequency = 40_000_000; // w5500 supports up to 50MHz, and the RP2350 can technically do more, but let's just play it safe
+    cfg.frequency = 10_000_000;
+    // w5500 supports up to 50MHz, and the RP2350 can technically do more, but let's just play it safe
+    // 50MHz doesn't work, 10MHz seems to work so far
     let spi = Spi::new(
         p.SPI0,
         p.PIN_22,
@@ -90,7 +92,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     let w5500_cs = Output::new(p.PIN_21, Level::High);
     let w5500_rst = Output::new(p.PIN_23, Level::High);
 
-    static SPI_BUS: StaticCell<Mutex<NoopRawMutex, Spi<'static, SPI0, spi::Async>>> = StaticCell::new();
+    static SPI_BUS: StaticCell<Mutex<CriticalSectionRawMutex, Spi<'static, SPI0, spi::Async>>> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(spi));
     let spi = SpiDevice::new(spi_bus, w5500_cs);
 

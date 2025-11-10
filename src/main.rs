@@ -13,7 +13,7 @@ use embassy_rp::peripherals::SPI0;
 use embassy_rp::spi::{Async, Spi};
 use embassy_time::{Duration, Ticker, Timer};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use static_cell::StaticCell;
 use embassy_rp::clocks::RoscRng;
 use heapless::Vec;
@@ -23,13 +23,12 @@ pub use crate::hal::*;
 pub mod modbus;
 pub use crate::modbus::*;
 
-// NoopRawMutex, because embassy expects a rawmutex anyway. doesn't do anything, just to satisfy trait bound
 #[embassy_executor::task]
 async fn ethernet_task(
     runner: Runner<
         'static,
         W5500,
-        SpiDevice<'static, NoopRawMutex, Spi<'static, SPI0, Async>, Output<'static>>,
+        SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI0, Async>, Output<'static>>,
         Input<'static>,
         Output<'static>,
     >,
