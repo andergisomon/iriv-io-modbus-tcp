@@ -13,6 +13,7 @@ use embassy_sync::mutex::Mutex;
 use static_cell::StaticCell;
 
 pub const SUPPLY_VOLTAGE_MV: u32 = 3320;
+const W5500_SPI_FREQ: u32 = 20_000_000; // Ok with 10_000_000
 
 pub struct Io {
     pub dout: [Output<'static>; 4],
@@ -32,7 +33,6 @@ pub struct Hal {
     pub io: Io,
     pub w5500_int: Input<'static>,
     pub w5500_spi: SpiDevice<'static, CriticalSectionRawMutex, Spi<'static, SPI0, spi::Async>, Output<'static>>,
-    // pub w5500_cs: Output<'static>,
     pub w5500_rst: Output<'static>,
 }
 
@@ -75,7 +75,7 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
     ];
 
     let mut cfg = SpiConfig::default();
-    cfg.frequency = 10_000_000;
+    cfg.frequency = W5500_SPI_FREQ;
     // w5500 supports up to 50MHz, and the RP2350 can technically do more, but let's just play it safe
     // 50MHz doesn't work, 10MHz seems to work so far
     let spi = Spi::new(
@@ -113,7 +113,6 @@ pub fn init(p: embassy_rp::Peripherals) -> Hal {
         io,
         w5500_spi: spi,
         w5500_int,
-        // w5500_cs,
         w5500_rst,
     }
 }
