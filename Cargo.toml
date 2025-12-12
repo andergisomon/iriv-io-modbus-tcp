@@ -9,6 +9,12 @@ description = "Modbus/TCP firmware for the Cytron IRIV IO."
 readme = "README.md"
 repository = "https://github.com/andergisomon/iriv-io-modbus-tcp"
 
+[workspace]
+members = [
+    ".",
+    "tester-client/tokio_client",
+]
+
 [dependencies]
 embassy-executor = { version = "0.9.1", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
 embassy-sync = { version = "0.7.2", features = ["defmt"]}
